@@ -7,7 +7,8 @@
 			  <resources prefix="Barasonisx-Dwell-Module" dynamicprefix="true" >
 			  </resources>
 			  <sources failonempty="true">
-				  <include name="ProfileModule/OpenProfile.cs" />
+				  <include name="Barosonix-Dwell-Module/Barosonix-Dwell-Module.cs" />
+				  <include name="obj/Release/.NETFramework,Version=v4.0.AssemblyAttribute.cs" />
 			  </sources>
 			  <references basedir="${project::get-base-directory()}">
 				  <lib>

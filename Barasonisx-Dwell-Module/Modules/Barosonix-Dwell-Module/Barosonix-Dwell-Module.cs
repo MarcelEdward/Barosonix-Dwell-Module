@@ -28,9 +28,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using System.Xml;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
@@ -49,8 +52,9 @@ using OpenSim.Services.Interfaces;
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using Mono.Addins;
+using Nwc.XmlRpc;
 
-[assembly: Addin("OpenProfileModule", "0.1")]
+[assembly: Addin("Barosonix-Dwell-Module", "0.1")]
 [assembly: AddinDependency("OpenSim", "0.5")]
 
 namespace Barosonix.Dwell.Module
@@ -58,6 +62,9 @@ namespace Barosonix.Dwell.Module
 	[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule")]
 	public class DwellModule : IDwellModule, INonSharedRegionModule
 	{
+		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private List<Scene> m_Scenes = new List<Scene>();
+		private static List<ILandObject> Parcels = new List<ILandObject> ();
 		private Scene m_scene;
 		public int dwell = 0;
 
@@ -73,50 +80,198 @@ namespace Barosonix.Dwell.Module
 
 		public void Initialise(IConfigSource source)
 		{
+			m_log.Info ("[DWELL]:Initialised");
 		}
 
 		public void AddRegion(Scene scene)
 		{
+			m_log.Info ("[DWELL]:Add Region");
+			scene.RegisterModuleInterface<IDwellModule>(this);
+
 			m_scene = scene;
 
 			m_scene.EventManager.OnNewClient += OnNewClient;
+			m_scene.EventManager.OnAvatarEnteringNewParcel += OnAvatarEnteringNewParcel;
+			lock(m_Scenes)
+			{
+				m_Scenes.Add(scene);
+				register(scene);
+			}
 		}
 
 		public void RegionLoaded(Scene scene)
 		{
+			//m_log.Info ("[DWELL]:Region Loaded");
+			//Parcels
+			//int test  =  (scene).LandChannel.AllParcels().Count;
+			//foreach (ILandObject Parcel in Parcels)
+			//{
+			//	LandData ParcelData = Parcel.LandData;
+			//m_log.Info ("[DWELL]:Parcel ID = " + test.ToString ());//ParcelData.Name.ToString());
+			//}
+
+			//List<ILandObject> m_los = scene.LandChannel.AllParcels();
+
+			//foreach (ILandObject landObject in m_los)
+			//{
+			//	m_log.Info ("[DWELL]:BOGIES");
+			//}
 		}
 
 		public void RemoveRegion(Scene scene)
 		{
+
 		}
 
 		public void Close()
 		{
 		}
 
+		public void register(Scene scene)
+		{
+			List<ILandObject> m_los = scene.LandChannel.AllParcels();
+
+			foreach (ILandObject landObject in m_los)
+			{
+				landObject.LandData.Dwell = 99;
+				m_log.Info ("[DWELL]:BOGIES");
+			}
+		}
+
+
+
+
+		public void OnAvatarEnteringNewParcel(ScenePresence avatar, int localLandID, UUID RegionID)
+		{
+
+			UUID id = new UUID ();
+			UUID pid = new UUID ();
+			pid = avatar.currentParcelUUID;
+			id = avatar.UUID;
+			UpdateDwell(id,pid);
+
+		}
+
 		public void OnNewClient(IClientAPI client)
 		{
-			dwell = dwell + 1;
+
 			client.OnParcelDwellRequest += ClientOnParcelDwellRequest;
+
 		}
 
-		public void EventManagerOnAvatarEnteringNewParcel(ScenePresence avatar, int localLandID, UUID regionID) {
+		private Hashtable GenericXMLRPCRequest(Hashtable ReqParams, string method, string server)
+		{
+			ArrayList SendParams = new ArrayList();
+			SendParams.Add(ReqParams);
 
-			dwell = dwell + 1;
+			// Send Request
+			XmlRpcResponse Resp;
+			try
+			{
+				XmlRpcRequest Req = new XmlRpcRequest(method, SendParams);
+				Resp = Req.Send(server, 30000);
+			}
+			catch (WebException ex)
+			{
+				m_log.ErrorFormat("[DWELL] : Unable to connect to Dwell " +
+					"Server {0}.  Exception {1}", "http://192.168.0.15/services/dwell/xmlrpc.php", ex);
+
+				Hashtable ErrorHash = new Hashtable();
+				ErrorHash["success"] = false;
+				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
+				ErrorHash["errorURI"] = "";
+
+				return ErrorHash;
+			}
+			catch (SocketException ex)
+			{
+
+
+
+				Hashtable ErrorHash = new Hashtable();
+				ErrorHash["success"] = false;
+				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
+				ErrorHash["errorURI"] = "";
+
+				return ErrorHash;
+			}
+			catch (XmlException ex)
+			{
+				m_log.ErrorFormat("[DWELL] : Unable to connect to Dwell " +
+					"Server {0}.  Exception {1}", "http://192.168.0.15/services/dwell/xmlrpc.php", ex);
+
+				Hashtable ErrorHash = new Hashtable();
+				ErrorHash["success"] = false;
+				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
+				ErrorHash["errorURI"] = "";
+
+				return ErrorHash;
+			}
+			if (Resp.IsFault)
+			{
+				Hashtable ErrorHash = new Hashtable();
+				ErrorHash["success"] = false;
+				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
+				ErrorHash["errorURI"] = "";
+				return ErrorHash;
+			}
+			Hashtable RespData = (Hashtable)Resp.Value;
+
+			return RespData;
 		}
-
 		private void ClientOnParcelDwellRequest(int localID, IClientAPI client)
 		{
 			ILandObject parcel = m_scene.LandChannel.GetLandObject(localID);
 			if (parcel == null)
 				return;
 
+			UUID id = (UUID)parcel.LandData.GlobalID.ToString();
+			dwell = GetDwell(id);
 			client.SendParcelDwellReply (localID, parcel.LandData.GlobalID, dwell);
+		}
+
+		public void UpdateDwell(UUID av,UUID parcelID)
+		{
+			string pid = parcelID.ToString();
+			string id = av.ToString();
+			m_log.Info ("[DWELL]:Sending Dwell Update request for parcel "+pid+" and av "+id);
+			Hashtable ReqHash = new Hashtable();
+			ReqHash["id"] = id;
+			ReqHash["pid"] = pid;
+
+			Hashtable result = GenericXMLRPCRequest(ReqHash,
+				"UpdateDwell", "http://192.168.0.15/services/dwell/xmlrpc.php");
+			ArrayList dataArray = (ArrayList)result["data"];
+
+			Hashtable d = (Hashtable)dataArray[0];
+			string rs = d["report"].ToString();
+			m_log.Info ("[DWELL]:"+rs);
+
+
+
 		}
 
 		public int GetDwell(UUID parcelID)
 		{
-			return 72;
+			string pid = parcelID.ToString();
+			Hashtable ReqHash = new Hashtable();
+			m_log.ErrorFormat ("[DWELL]:" + pid);
+			ReqHash["pid"] = pid;
+
+			Hashtable result = GenericXMLRPCRequest(ReqHash,
+				"GetDwell", "http://192.168.0.15/services/dwell/xmlrpc.php");
+
+			if (!Convert.ToBoolean(result["success"]))
+			{
+				////remoteClient.SendAgentAlertMessage(
+				//result["errorMessage"].ToString(), false);
+				return 0;
+			}
+			ArrayList dataArray = (ArrayList)result["data"];
+
+			Hashtable d = (Hashtable)dataArray[0];
+			int rs = Convert.ToInt32(d["dwellers"].ToString());
+			return rs;
 		}
 	}
 }

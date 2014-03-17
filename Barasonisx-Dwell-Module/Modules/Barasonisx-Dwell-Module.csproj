@@ -52,7 +52,120 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Axiom.MathLib">
+      <Name>Axiom.MathLib</Name>
+      <HintPath>..\..\..\bin\Axiom.MathLib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="log4net">
+      <Name>log4net</Name>
+      <HintPath>..\..\..\bin\log4net.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Mono.Addins">
+      <Name>Mono.Addins</Name>
+      <HintPath>..\..\..\bin\Mono.Addins.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Nini">
+      <Name>Nini</Name>
+      <HintPath>..\..\..\bin\Nini.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse">
+      <Name>OpenMetaverse</Name>
+      <HintPath>..\..\..\bin\OpenMetaverse.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes">
+      <Name>OpenMetaverseTypes</Name>
+      <HintPath>..\..\..\bin\OpenMetaverseTypes.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System">
+      <Name>System</Name>
+    </Reference>
+    <Reference Include="System.Drawing">
+      <Name>System.Drawing</Name>
+    </Reference>
+    <Reference Include="System.Runtime.Remoting">
+      <Name>System.Runtime.Remoting</Name>
+    </Reference>
+    <Reference Include="System.Xml">
+      <Name>System.Xml</Name>
+    </Reference>
+    <Reference Include="XMLRPC">
+      <Name>XMLRPC</Name>
+      <HintPath>..\..\..\bin\XMLRPC.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData">
+      <HintPath>..\..\..\bin\OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenSim.Capabilities">
+      <HintPath>..\..\..\bin\OpenSim.Capabilities.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\OpenSim\Data\OpenSim.Data.csproj">
+      <Project>{B75A430B-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Data</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Framework\OpenSim.Framework.csproj">
+      <Project>{7404933D-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Framework</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Framework\Communications\OpenSim.Framework.Communications.csproj">
+      <Project>{7667FA4E-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Framework.Communications</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Framework\Console\OpenSim.Framework.Console.csproj">
+      <Project>{16759386-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Framework.Console</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Framework\Servers\OpenSim.Framework.Servers.csproj">
+      <Project>{540267BF-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Framework.Servers</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Region\Framework\OpenSim.Region.Framework.csproj">
+      <Project>{9169B545-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Region.Framework</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Region\Physics\Manager\OpenSim.Region.Physics.Manager.csproj">
+      <Project>{D2D558ED-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Region.Physics.Manager</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Services\Connectors\OpenSim.Services.Connectors.csproj">
+      <Project>{129397F5-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Services.Connectors</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Services\Interfaces\OpenSim.Services.Interfaces.csproj">
+      <Project>{E1873C89-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Services.Interfaces</Name>
+      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Region\CoreModules\OpenSim.Region.CoreModules.csproj">
+      <Project>{D7F31C6F-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Region.CoreModules</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\OpenSim\Framework\Servers\HttpServer\OpenSim.Framework.Servers.HttpServer.csproj">
+      <Project>{1CBD339A-0000-0000-0000-000000000000}</Project>
+      <Name>OpenSim.Framework.Servers.HttpServer</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Barosonix-Dwell-Module\Barosonix-Dwell-Module.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="obj\Release\.NETFramework,Version=v4.0.AssemblyAttribute.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
@@ -63,51 +176,4 @@
     <PostBuildEvent>
     </PostBuildEvent>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="Nini">
-      <HintPath>..\..\..\bin\Nini.dll</HintPath>
-    </Reference>
-    <Reference Include="log4net">
-      <HintPath>..\..\..\bin\log4net.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenMetaverse">
-      <HintPath>..\..\..\bin\OpenMetaverse.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenMetaverse.StructuredData">
-      <HintPath>..\..\..\bin\OpenMetaverse.StructuredData.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Framework">
-      <HintPath>..\..\..\bin\OpenSim.Framework.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Framework.Servers">
-      <HintPath>..\..\..\bin\OpenSim.Framework.Servers.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Framework.Servers.HttpServer">
-      <HintPath>..\..\..\bin\OpenSim.Framework.Servers.HttpServer.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Framework.Console">
-      <HintPath>..\..\..\bin\OpenSim.Framework.Console.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Capabilities">
-      <HintPath>..\..\..\bin\OpenSim.Capabilities.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Region.CoreModules">
-      <HintPath>..\..\..\bin\OpenSim.Region.CoreModules.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Services.Interfaces">
-      <HintPath>..\..\..\bin\OpenSim.Services.Interfaces.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Region.Physics.Manager">
-      <HintPath>..\..\..\bin\OpenSim.Region.Physics.Manager.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenSim.Region.Framework">
-      <HintPath>..\..\..\bin\OpenSim.Region.Framework.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenMetaverseTypes">
-      <HintPath>..\..\..\bin\OpenMetaverseTypes.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.Addins">
-      <HintPath>..\..\..\bin\Mono.Addins.dll</HintPath>
-    </Reference>
-  </ItemGroup>
 </Project>
