@@ -1,6 +1,5 @@
 [Dwell]
-    ;; This enables the built in basic dwell module
     DwellModule = BarosonixDwellModule
-    DwellURL = http://192.168.0.15/services/dwell/xmlrpc.php
+    DwellURL = http://yoururlhere
     NPCaddToDwell = false
     AvReturnTime = 5
