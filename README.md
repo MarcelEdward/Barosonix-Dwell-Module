@@ -1,4 +1,4 @@
-This is a Dwell module (parcel Taffic) for OpenSim
+This is a Dwell module (parcel Taffic) for Barasonix which at this time and probably for the foreseeable future is just a renamed clone of Opensim and therefore will work for current opensim.
 
 To compile: Simply add the Barasonix-Dwell-Module folder to the addon-modules
 directory and re run ./runprebuil.sh then xbuild
