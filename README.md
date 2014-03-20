@@ -5,11 +5,11 @@ directory and re run ./runprebuil.sh then xbuild
 
 To configure  : Add the following to opensim.ini 
 
-[Dwell]
-    DwellModule = BarosonixDwellModule
-    DwellURL = http://yoururlhere
-    NPCaddToDwell = false
-    AvReturnTime = 5
+[Dwell]             
+    DwellModule = BarosonixDwellModule              
+    DwellURL = http://yoururlhere               
+    NPCaddToDwell = false               
+    AvReturnTime = 5                
 
 DwellModule tells OpenSim to use the Barosonix mmodule.
 
