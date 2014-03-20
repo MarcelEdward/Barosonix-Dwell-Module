@@ -18,14 +18,16 @@
      <Reference name="System.Runtime.Remoting"/>
      <Reference name="OpenMetaverseTypes" path="../../../bin/"/>
      <Reference name="OpenMetaverse" path="../../../bin/"/>
-     <Reference name="Axiom.MathLib" path="../../../bin/"/>
+     <Reference name="OpenMetaverse.StructuredData" path="../../../bin/"/>
+     <Reference name="OpenSim.Capabilities"/>
      <Reference name="OpenSim.Framework"/>
      <Reference name="OpenSim.Data"/>
      <Reference name="OpenSim.Region.Framework"/>
      <Reference name="OpenSim.Framework.Console"/>
      <Reference name="OpenSim.Framework.Servers"/>
-     <Reference name="OpenSim.Framework.Statistics"/>
+     <Reference name="OpenSim.Framework.Servers.HttpServer"/>
      <Reference name="OpenSim.Framework.Communications"/>
+     <Reference name="OpenSim.Region.CoreModules"/>
      <Reference name="OpenSim.Region.Physics.Manager"/>
      <Reference name="OpenSim.Services.Interfaces"/>
      <Reference name="OpenSim.Services.Connectors"/>

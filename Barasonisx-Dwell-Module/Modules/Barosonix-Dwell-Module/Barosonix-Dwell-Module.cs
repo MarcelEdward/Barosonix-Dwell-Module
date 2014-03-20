@@ -1,30 +1,3 @@
-/*
-     * Copyright (c) Contributors, http://opensimulator.org/
-     * See CONTRIBUTORS.TXT for a full list of copyright holders.
-     *
-     * Redistribution and use in source and binary forms, with or without
-     * modification, are permitted provided that the following conditions are met:
-     * * Redistributions of source code must retain the above copyright
-     * notice, this list of conditions and the following disclaimer.
-     * * Redistributions in binary form must reproduce the above copyright
-     * notice, this list of conditions and the following disclaimer in the
-     * documentation and/or other materials provided with the distribution.
-     * * Neither the name of the OpenSimulator Project nor the
-     * names of its contributors may be used to endorse or promote products
-     * derived from this software without specific prior written permission.
-     *
-     * THIS SOFTWARE IS PROVIDED BY THE DEVELOPERS ``AS IS'' AND ANY
-     * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-     * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-     * DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY
-     * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-     * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-     * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-     * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-     * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-     * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-     */
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -54,101 +27,102 @@ using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using Mono.Addins;
 using Nwc.XmlRpc;
 
-[assembly: Addin("Barosonix-Dwell-Module", "0.1")]
+[assembly: Addin("BarosonixDwellModule", "0.1")]
 [assembly: AddinDependency("OpenSim", "0.5")]
 
 namespace Barosonix.Dwell.Module
 {
-	[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule")]
-	public class DwellModule : IDwellModule, INonSharedRegionModule
+	[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "BarosonixDwellModule")]
+	public class BarosonixDwellModule : IDwellModule, INonSharedRegionModule
 	{
 		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-		private List<Scene> m_Scenes = new List<Scene>();
-		private static List<ILandObject> Parcels = new List<ILandObject> ();
 		private Scene m_scene;
+		private IConfigSource m_Config;
+		private string m_DwellServer = "";
+		private bool m_NPCaddToDwell = false;
+		private int m_AvReturnTime = 60;
+		private bool m_Enabled = false;
 		public int dwell = 0;
+		public string Name { get { return "BarosonixDwellModule"; } }        
 
 		public Type ReplaceableInterface
 		{
-			get { return typeof(IDwellModule); }
+			get { return null; }
 		}
-
-		public string Name
-		{
-			get { return "DwellModule"; }
-		}
-
 		public void Initialise(IConfigSource source)
 		{
-			m_log.Info ("[DWELL]:Initialised");
+			m_Config = source;
+
+			IConfig DwellConfig = m_Config.Configs ["Dwell"];
+
+			if (DwellConfig == null) {
+				m_Enabled = false;
+				return;
+			}
+
+			m_Enabled = (DwellConfig.GetString ("DwellModule", "BarosonixDwellModule") == "BarosonixDwellModule");
+
+			if (!m_Enabled) {
+				return;
+			}
+
+
+			m_DwellServer = DwellConfig.GetString ("DwellURL", "");
+
+			if (m_DwellServer == "") {
+				m_Enabled = false;
+				return;
+			} 
+
+			m_NPCaddToDwell = DwellConfig.GetBoolean ("NPCaddToDwell", false);
+			m_AvReturnTime = DwellConfig.GetInt ("AvReturnTime", 60);
+		}
+
+		public void Close()
+		{
+
 		}
 
 		public void AddRegion(Scene scene)
 		{
-			m_log.Info ("[DWELL]:Add Region");
+			if (!m_Enabled)
+				return;
+
 			scene.RegisterModuleInterface<IDwellModule>(this);
 
 			m_scene = scene;
 
 			m_scene.EventManager.OnNewClient += OnNewClient;
 			m_scene.EventManager.OnAvatarEnteringNewParcel += OnAvatarEnteringNewParcel;
-			lock(m_Scenes)
-			{
-				m_Scenes.Add(scene);
-				register(scene);
-			}
-		}
 
-		public void RegionLoaded(Scene scene)
-		{
-			//m_log.Info ("[DWELL]:Region Loaded");
-			//Parcels
-			//int test  =  (scene).LandChannel.AllParcels().Count;
-			//foreach (ILandObject Parcel in Parcels)
-			//{
-			//	LandData ParcelData = Parcel.LandData;
-			//m_log.Info ("[DWELL]:Parcel ID = " + test.ToString ());//ParcelData.Name.ToString());
-			//}
-
-			//List<ILandObject> m_los = scene.LandChannel.AllParcels();
-
-			//foreach (ILandObject landObject in m_los)
-			//{
-			//	m_log.Info ("[DWELL]:BOGIES");
-			//}
 		}
 
 		public void RemoveRegion(Scene scene)
 		{
+			if (!m_Enabled)
+				return;
 
-		}
+			scene.UnregisterModuleInterface<IDwellModule>(this);
+		}        
 
-		public void Close()
+		public void RegionLoaded(Scene scene)
 		{
-		}
 
-		public void register(Scene scene)
-		{
-			List<ILandObject> m_los = scene.LandChannel.AllParcels();
-
-			foreach (ILandObject landObject in m_los)
-			{
-				landObject.LandData.Dwell = 99;
-				m_log.Info ("[DWELL]:BOGIES");
-			}
-		}
-
-
-
+		}   
 
 		public void OnAvatarEnteringNewParcel(ScenePresence avatar, int localLandID, UUID RegionID)
 		{
+			UUID id = avatar.UUID;
+			UUID pid = avatar.currentParcelUUID;
 
-			UUID id = new UUID ();
-			UUID pid = new UUID ();
-			pid = avatar.currentParcelUUID;
-			id = avatar.UUID;
-			UpdateDwell(id,pid);
+			if (!m_NPCaddToDwell) {
+				if (!npccheck (id)) {
+					checkav(id,pid,m_AvReturnTime);
+					} 
+				} else {
+				checkav(id,pid,m_AvReturnTime);
+				}
+
 
 		}
 
@@ -164,7 +138,6 @@ namespace Barosonix.Dwell.Module
 			ArrayList SendParams = new ArrayList();
 			SendParams.Add(ReqParams);
 
-			// Send Request
 			XmlRpcResponse Resp;
 			try
 			{
@@ -174,7 +147,7 @@ namespace Barosonix.Dwell.Module
 			catch (WebException ex)
 			{
 				m_log.ErrorFormat("[DWELL] : Unable to connect to Dwell " +
-					"Server {0}.  Exception {1}", "http://192.168.0.15/services/dwell/xmlrpc.php", ex);
+					"Server {0}.  Exception {1}", m_DwellServer, ex);
 
 				Hashtable ErrorHash = new Hashtable();
 				ErrorHash["success"] = false;
@@ -185,12 +158,9 @@ namespace Barosonix.Dwell.Module
 			}
 			catch (SocketException ex)
 			{
-
-
-
 				Hashtable ErrorHash = new Hashtable();
 				ErrorHash["success"] = false;
-				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
+				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. "+ ex;
 				ErrorHash["errorURI"] = "";
 
 				return ErrorHash;
@@ -198,7 +168,7 @@ namespace Barosonix.Dwell.Module
 			catch (XmlException ex)
 			{
 				m_log.ErrorFormat("[DWELL] : Unable to connect to Dwell " +
-					"Server {0}.  Exception {1}", "http://192.168.0.15/services/dwell/xmlrpc.php", ex);
+					"Server {0}.  Exception {1}", m_DwellServer, ex);
 
 				Hashtable ErrorHash = new Hashtable();
 				ErrorHash["success"] = false;
@@ -219,6 +189,7 @@ namespace Barosonix.Dwell.Module
 
 			return RespData;
 		}
+
 		private void ClientOnParcelDwellRequest(int localID, IClientAPI client)
 		{
 			ILandObject parcel = m_scene.LandChannel.GetLandObject(localID);
@@ -230,41 +201,54 @@ namespace Barosonix.Dwell.Module
 			client.SendParcelDwellReply (localID, parcel.LandData.GlobalID, dwell);
 		}
 
-		public void UpdateDwell(UUID av,UUID parcelID)
+		private void checkav(UUID av,UUID parcelID,int time)
 		{
 			string pid = parcelID.ToString();
 			string id = av.ToString();
-			m_log.Info ("[DWELL]:Sending Dwell Update request for parcel "+pid+" and av "+id);
+			string avrtime = time.ToString();
 			Hashtable ReqHash = new Hashtable();
 			ReqHash["id"] = id;
 			ReqHash["pid"] = pid;
+			ReqHash["avrt"] = avrtime;
 
 			Hashtable result = GenericXMLRPCRequest(ReqHash,
-				"UpdateDwell", "http://192.168.0.15/services/dwell/xmlrpc.php");
-			ArrayList dataArray = (ArrayList)result["data"];
-
-			Hashtable d = (Hashtable)dataArray[0];
-			string rs = d["report"].ToString();
-			m_log.Info ("[DWELL]:"+rs);
-
-
-
+				"Checkav", m_DwellServer);
+			if (!Convert.ToBoolean(result["success"]))
+			{
+			}
 		}
+
+		private bool npccheck(UUID clientID)
+		{
+			ScenePresence p;
+
+			p = m_scene.GetScenePresence(clientID);
+
+			if (p != null && !p.IsChildAgent) {
+				if (p.PresenceType == PresenceType.Npc) 
+				{
+					return true;
+				} 
+				else
+				{
+					return false;
+				}
+			}
+			return false;
+		}
+
 
 		public int GetDwell(UUID parcelID)
 		{
 			string pid = parcelID.ToString();
 			Hashtable ReqHash = new Hashtable();
-			m_log.ErrorFormat ("[DWELL]:" + pid);
 			ReqHash["pid"] = pid;
 
 			Hashtable result = GenericXMLRPCRequest(ReqHash,
-				"GetDwell", "http://192.168.0.15/services/dwell/xmlrpc.php");
+				"GetDwell", m_DwellServer);
 
 			if (!Convert.ToBoolean(result["success"]))
 			{
-				////remoteClient.SendAgentAlertMessage(
-				//result["errorMessage"].ToString(), false);
 				return 0;
 			}
 			ArrayList dataArray = (ArrayList)result["data"];
@@ -273,5 +257,6 @@ namespace Barosonix.Dwell.Module
 			int rs = Convert.ToInt32(d["dwellers"].ToString());
 			return rs;
 		}
+		             
 	}
 }
