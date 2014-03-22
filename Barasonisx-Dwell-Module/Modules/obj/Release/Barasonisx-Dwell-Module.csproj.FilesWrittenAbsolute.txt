@@ -1,0 +1,3 @@
+/home/chris/Desktop/opensim-working/addon-modules/Barasonisx-Dwell-Module/Modules/obj/Release/.NETFramework,Version=v4.0.AssemblyAttribute.cs
+/home/chris/Desktop/opensim-working/bin/Barasonisx-Dwell-Module.dll
+/home/chris/Desktop/opensim-working/addon-modules/Barasonisx-Dwell-Module/Modules/obj/Release/Barasonisx-Dwell-Module.dll

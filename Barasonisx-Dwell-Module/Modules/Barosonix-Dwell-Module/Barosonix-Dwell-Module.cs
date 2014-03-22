@@ -17,11 +17,13 @@ using OpenSim.Framework.Capabilities;
 using OpenSim.Framework.Console;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
+using Barosonix.Dwell.Module.Data;
 using OpenSim.Region.CoreModules.Framework.InterfaceCommander;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Physics.Manager;
 using OpenSim.Services.Interfaces;
+using OpenSim.Server.Base;
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using Mono.Addins;
@@ -38,7 +40,7 @@ namespace Barosonix.Dwell.Module
 		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 		private Scene m_scene;
 		private IConfigSource m_Config;
-		private string m_DwellServer = "";
+		private IDwellData m_DwellData;
 		private bool m_NPCaddToDwell = false;
 		private int m_AvReturnTime = 60;
 		private bool m_Enabled = false;
@@ -65,14 +67,18 @@ namespace Barosonix.Dwell.Module
 			if (!m_Enabled) {
 				return;
 			}
+			string StorageProvider = DwellConfig.GetString ("StorageProvider", "");
+			string ConnectionString = DwellConfig.GetString ("ConnectionString", "");
 
-
-			m_DwellServer = DwellConfig.GetString ("DwellURL", "");
-
-			if (m_DwellServer == "") {
+			if (StorageProvider == string.Empty || ConnectionString == string.Empty) {
 				m_Enabled = false;
+				m_log.ErrorFormat ("[DWELL]: missing service specifications Not Enabled", new object[0]);
 				return;
-			} 
+			}
+			m_DwellData = ServerUtils.LoadPlugin<IDwellData> (StorageProvider, new object[]
+				{
+					ConnectionString
+				});
 
 			m_NPCaddToDwell = DwellConfig.GetBoolean ("NPCaddToDwell", false);
 			m_AvReturnTime = DwellConfig.GetInt ("AvReturnTime", 60);
@@ -133,62 +139,6 @@ namespace Barosonix.Dwell.Module
 
 		}
 
-		private Hashtable GenericXMLRPCRequest(Hashtable ReqParams, string method, string server)
-		{
-			ArrayList SendParams = new ArrayList();
-			SendParams.Add(ReqParams);
-
-			XmlRpcResponse Resp;
-			try
-			{
-				XmlRpcRequest Req = new XmlRpcRequest(method, SendParams);
-				Resp = Req.Send(server, 30000);
-			}
-			catch (WebException ex)
-			{
-				m_log.ErrorFormat("[DWELL] : Unable to connect to Dwell " +
-					"Server {0}.  Exception {1}", m_DwellServer, ex);
-
-				Hashtable ErrorHash = new Hashtable();
-				ErrorHash["success"] = false;
-				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
-				ErrorHash["errorURI"] = "";
-
-				return ErrorHash;
-			}
-			catch (SocketException ex)
-			{
-				Hashtable ErrorHash = new Hashtable();
-				ErrorHash["success"] = false;
-				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. "+ ex;
-				ErrorHash["errorURI"] = "";
-
-				return ErrorHash;
-			}
-			catch (XmlException ex)
-			{
-				m_log.ErrorFormat("[DWELL] : Unable to connect to Dwell " +
-					"Server {0}.  Exception {1}", m_DwellServer, ex);
-
-				Hashtable ErrorHash = new Hashtable();
-				ErrorHash["success"] = false;
-				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
-				ErrorHash["errorURI"] = "";
-
-				return ErrorHash;
-			}
-			if (Resp.IsFault)
-			{
-				Hashtable ErrorHash = new Hashtable();
-				ErrorHash["success"] = false;
-				ErrorHash["errorMessage"] = "Unable to fetch Dwell data at this time. ";
-				ErrorHash["errorURI"] = "";
-				return ErrorHash;
-			}
-			Hashtable RespData = (Hashtable)Resp.Value;
-
-			return RespData;
-		}
 
 		private void ClientOnParcelDwellRequest(int localID, IClientAPI client)
 		{
@@ -197,7 +147,7 @@ namespace Barosonix.Dwell.Module
 				return;
 
 			UUID id = (UUID)parcel.LandData.GlobalID.ToString();
-			dwell = GetDwell(id);
+			dwell = GetDwell (id);
 			client.SendParcelDwellReply (localID, parcel.LandData.GlobalID, dwell);
 		}
 
@@ -211,11 +161,11 @@ namespace Barosonix.Dwell.Module
 			ReqHash["pid"] = pid;
 			ReqHash["avrt"] = avrtime;
 
-			Hashtable result = GenericXMLRPCRequest(ReqHash,
-				"Checkav", m_DwellServer);
-			if (!Convert.ToBoolean(result["success"]))
-			{
-			}
+			//Hashtable result = GenericXMLRPCRequest(ReqHash,
+			//	"Checkav", m_DwellServer);
+			//if (!Convert.ToBoolean(result["success"]))
+			//{
+			//
 		}
 
 		private bool npccheck(UUID clientID)
@@ -240,22 +190,8 @@ namespace Barosonix.Dwell.Module
 
 		public int GetDwell(UUID parcelID)
 		{
-			string pid = parcelID.ToString();
-			Hashtable ReqHash = new Hashtable();
-			ReqHash["pid"] = pid;
-
-			Hashtable result = GenericXMLRPCRequest(ReqHash,
-				"GetDwell", m_DwellServer);
-
-			if (!Convert.ToBoolean(result["success"]))
-			{
-				return 0;
-			}
-			ArrayList dataArray = (ArrayList)result["data"];
-
-			Hashtable d = (Hashtable)dataArray[0];
-			int rs = Convert.ToInt32(d["dwellers"].ToString());
-			return rs;
+			int result = m_DwellData.GetDwell(parcelID);
+			return result;
 		}
 		             
 	}
