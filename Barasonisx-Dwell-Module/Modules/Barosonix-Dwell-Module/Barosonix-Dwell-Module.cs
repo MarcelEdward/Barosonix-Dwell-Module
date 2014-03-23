@@ -151,21 +151,33 @@ namespace Barosonix.Dwell.Module
 			client.SendParcelDwellReply (localID, parcel.LandData.GlobalID, dwell);
 		}
 
+
 		private void checkav(UUID av,UUID parcelID,int time)
 		{
-			string pid = parcelID.ToString();
-			string id = av.ToString();
-			string avrtime = time.ToString();
-			Hashtable ReqHash = new Hashtable();
-			ReqHash["id"] = id;
-			ReqHash["pid"] = pid;
-			ReqHash["avrt"] = avrtime;
+			int dif = 0;
+			int rtime = time * 60;
+			int dbstamp = m_DwellData.GetTimestamp(av,parcelID,"landDwell");
+			Int32 unixTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+			int cstamp = unixTimestamp;
+			int cdwell = m_DwellData.GetDwell(parcelID,"land");
+			if(dbstamp == 0)
+			{
+				m_DwellData.InsertAv (av, parcelID, cstamp, "landDwell");
+				m_DwellData.UpdateDwell (parcelID, cdwell + 1, "land");
+			}
+			else
+			{
+				dif = (cstamp - dbstamp);
+				if (dif < rtime)
+				{
+				}
+				else
+				{
+					m_DwellData.UpdateDwell (parcelID, cdwell + 1, "land");
+					m_DwellData.UpdateTimestamp (av, parcelID, cstamp, "landDwell");
+				}
 
-			//Hashtable result = GenericXMLRPCRequest(ReqHash,
-			//	"Checkav", m_DwellServer);
-			//if (!Convert.ToBoolean(result["success"]))
-			//{
-			//
+			}
 		}
 
 		private bool npccheck(UUID clientID)
@@ -190,7 +202,7 @@ namespace Barosonix.Dwell.Module
 
 		public int GetDwell(UUID parcelID)
 		{
-			int result = m_DwellData.GetDwell(parcelID);
+			int result = m_DwellData.GetDwell(parcelID,"land");
 			return result;
 		}
 		             

@@ -24,6 +24,7 @@
      <Reference name="OpenSim.Data"/>
      <Reference name="OpenSim.Region.Framework"/>
      <Reference name="OpenSim.Framework.Console"/>
+     <Reference name="Barosonix.Dwell.Module.Data"/>
      <Reference name="OpenSim.Framework.Servers"/>
      <Reference name="OpenSim.Framework.Servers.HttpServer"/>
      <Reference name="OpenSim.Framework.Communications"/>
