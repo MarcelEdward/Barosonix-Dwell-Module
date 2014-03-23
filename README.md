@@ -5,22 +5,23 @@ directory and re run ./runprebuil.sh then xbuild
 
 To configure  : Add the following to opensim.ini 
 
-[Dwell]
-    DwellModule = BarosonixDwellModule
-    DwellURL = http://yoururlhere
-    NPCaddToDwell = false
-    AvReturnTime = 5
+[Dwell]     
+    DwellModule = BarosonixDwellModule      
+    NPCaddToDwell = false       
+    AvReturnTime = 5        
+    StorageProvider = "Barasonisx-Dwell-Module-DB.dll"      
+    ConnectionString = "Data Source=127.0.0.1;Database=opensim;UserID=opensim;Password=**********;Old Guids=true;"      
 
 DwellModule tells OpenSim to use the Barosonix mmodule.
-
-DwellUrl is the url to the dwell xmlrpc.php file
 
 NPCaddToDwell allows or dissallows NPC,s to be able to increment the dwell count
 
 AvReturnTime is the time in minutes that MUST pass before an avatar re entering a parcel will be counted in the dwell count
 
+ConnectionString = the conection info for your db.
+
 Next is on to the Database
-This module makes use of the land table in the OpenSim database and requires one more table to be added for which I have provided dwell.sql, Simply import into the OpenSim db and then proceede to set up the databaseinfo.php file.
+This module makes use of the land table in the OpenSim database and requires one more table to be added for which I have provided dwell.sql, Simply import into the OpenSim 
 
 Once that is done then simply start OpenSim.exe and voila Parcel Traffic now works and also if the osssearch module is used aswell then the popular places should work to along with traffic counts in other search pages.
 
