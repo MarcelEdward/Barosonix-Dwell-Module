@@ -1,6 +1,0 @@
-[Dwell]
-    DwellModule = BarosonixDwellModule
-    NPCaddToDwell = false
-    AvReturnTime = 5
-    StorageProvider = "Barasonisx-Dwell-Module-DB.dll"
-    ConnectionString = "Data Source=127.0.0.1;Database=opensim;UserID=opensim;Password=**********;Old Guids=true;"
