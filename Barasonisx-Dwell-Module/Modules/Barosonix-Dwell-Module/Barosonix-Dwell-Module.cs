@@ -27,9 +27,6 @@ using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using Mono.Addins;
 using Nwc.XmlRpc;
 
-[assembly: Addin("BarosonixDwellModule", "0.1")]
-[assembly: AddinDependency("OpenSim", "0.5")]
-
 namespace Barosonix.Dwell.Module
 {
 	[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "BarosonixDwellModule")]

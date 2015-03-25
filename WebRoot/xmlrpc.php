@@ -4,6 +4,14 @@ include("databaseinfo.php");
 mysql_connect ($DB_HOST, $DB_USER, $DB_PASSWORD);
 mysql_select_db ($DB_NAME);
 
+/*
+// some config need the reference to xmlrpc if they are not installed already in php
+
+include (__DIR__.'/../xmlrpc/xmlrpc.inc');
+include (__DIR__.'/../xmlrpc/xmlrpcs.inc');
+include (__DIR__.'/../xmlrpc/xmlrpc_extension_api.inc');
+*/
+
 $report ="";
 $xmlrpc_server = xmlrpc_server_create();
 
