@@ -33,13 +33,19 @@ namespace Barosonix.Dwell.Module
 	public class BarosonixDwellModule : IDwellModule, INonSharedRegionModule
 	{
 		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		
+		private System.Timers.Timer m_timer = new System.Timers.Timer();
+		
 		private Scene m_scene;
 		private IConfigSource m_Config;
 		private string m_DwellServer = "";
 		private bool m_NPCaddToDwell = false;
-		private int m_AvReturnTime = 60;
+		private int m_AvReturnTime = 10;
 		private bool m_Enabled = false;
+		private int m_periodToCountInHours = 24;
+		private bool m_countUniqueAvatar = false;
 		public int dwell = 0;
+		
 		public string Name { get { return "BarosonixDwellModule"; } }        
 
 		public Type ReplaceableInterface
@@ -73,8 +79,18 @@ namespace Barosonix.Dwell.Module
 
 			m_NPCaddToDwell = DwellConfig.GetBoolean ("NPCaddToDwell", false);
 			m_AvReturnTime = DwellConfig.GetInt ("AvReturnTime", 60);
+			m_periodToCountInHours = DwellConfig.GetInt ("PeriodToCountInHours", 24);
+			m_countUniqueAvatar = DwellConfig.GetBoolean ("CountUniqueAvatar", false);
+			
+			m_timer = new System.Timers.Timer();
+			m_timer.AutoReset = true;
+			m_timer.Enabled = true;
+			m_timer.Interval = 60000 * m_AvReturnTime; // 60 secs * return time out of config
+			m_timer.Elapsed += ProcessQueue;
+			m_timer.Start();			
 		}
 
+			
 		public void Close()
 		{
 
@@ -91,7 +107,6 @@ namespace Barosonix.Dwell.Module
 
 			m_scene.EventManager.OnNewClient += OnNewClient;
 			m_scene.EventManager.OnAvatarEnteringNewParcel += OnAvatarEnteringNewParcel;
-
 		}
 
 		public void RemoveRegion(Scene scene)
@@ -107,29 +122,135 @@ namespace Barosonix.Dwell.Module
 
 		}   
 
-		public void OnAvatarEnteringNewParcel(ScenePresence avatar, int localLandID, UUID RegionID)
+				
+		private void ProcessQueue(object sender, System.Timers.ElapsedEventArgs e)
 		{
-			UUID id = avatar.UUID;
-			UUID pid = avatar.currentParcelUUID;
-
-			if (!m_NPCaddToDwell) {
-				if (!npccheck (id)) {
-					checkav(id,pid,m_AvReturnTime);
+			int number = 0;
+			
+			Hashtable ReqHash = new Hashtable();
+			
+			ReqHash["avrt"] = m_AvReturnTime.ToString();
+			ReqHash["pch"] = m_periodToCountInHours;
+			ReqHash["cua"] = m_countUniqueAvatar.ToString();
+			//the region uuid and region name
+			ReqHash["regionuuid"] = m_scene.RegionInfo.RegionID.ToString();
+			ReqHash["regionname"] = m_scene.RegionInfo.RegionName;
+			// get a list of avatars in the region
+			//m_log.DebugFormat("[DWELL]: region {0} ", m_scene.RegionInfo.RegionName);
+			
+			foreach (ScenePresence avatar in m_scene.GetScenePresences()) {
+				if (!m_NPCaddToDwell) {
+					if (npccheck (avatar.UUID)) {
+						continue;
 					} 
-				} else {
-				checkav(id,pid,m_AvReturnTime);
+				} 
+				if (!avatar.IsChildAgent)
+				{
+					string numberStr = number.ToString();
+					number = number + 1;
+					//m_log.DebugFormat("[DWELL]: add avatar {0} ", avatar.Name);
+					Hashtable data = new Hashtable();
+					data["id"] = avatar.UUID.ToString();
+					data["avatar"] = avatar.Name;
+					//m_log.DebugFormat("[DWELL]: avatar postion {0} {1} {2}",avatar.AbsolutePosition.X.ToString(),avatar.AbsolutePosition.Y.ToString(),avatar.AbsolutePosition.Z.ToString());
+					ILandObject parcel = m_scene.LandChannel.GetLandObject(avatar.AbsolutePosition);
+					
+					data["pid"] = parcel.LandData.GlobalID.ToString();
+
+					data["localLandID"] = parcel.LandData.LocalID.ToString();
+					data["parcel"] = parcel.LandData.Name.ToString();
+					data["parcelOwner"] = parcel.LandData.OwnerID.ToString();
+					data["parcelGroupOwned"] = "0";
+					data["parcelOwnerName"] = "";
+					if (parcel.LandData.IsGroupOwned) {
+						data["parcelGroupOwned"] = "1";
+						IGroupsModule groups = m_scene.RequestModuleInterface<IGroupsModule>();
+						if (groups != null)
+						{
+							GroupRecord gr = groups.GetGroupRecord(parcel.LandData.OwnerID);
+							if (gr != null)
+								data["parcelOwnerName"] = gr.GroupName.ToString();	
+						}
+					} else {
+						UserAccount account = m_scene.UserAccountService.GetUserAccount(UUID.Zero, parcel.LandData.OwnerID);
+						data["parcelOwnerName"] = account.Name;	
+					}	
+					ReqHash[numberStr] = data;
 				}
+			}
+			if (number>0)
+			{	
+				//send the request and process update the presence count in the dwell database
+				ReqHash["number"] = number.ToString();
+				//m_log.DebugFormat("[DWELL]: send xmlrpc request");
+				Hashtable result = GenericXMLRPCRequest(ReqHash,
+					"Checkav", m_DwellServer);
+				if (Convert.ToBoolean(result["success"]))
+				{
+					//m_log.DebugFormat("[DWELL]: got success back, process result");
+					ArrayList dataArray = (ArrayList)result["data"];
+					
+					
+					int totalNumber = dataArray.Count;
+					//m_log.DebugFormat("[DWELL]: total number of parcels {0}",totalNumber.ToString());
+					for (int i = 0; i < totalNumber; i++)
+					{
+						Hashtable d = (Hashtable)dataArray[i];
+						int LocalLandID = Convert.ToInt32(d["localLandID"].ToString());
+						ILandObject parcel = m_scene.LandChannel.GetLandObject(LocalLandID);
+						parcel.LandData.Dwell = Convert.ToInt32(d["data"].ToString());
+						m_scene.LandChannel.UpdateLandObject(LocalLandID, parcel.LandData);
+					}
 
-
+				}				
+			}
+	
 		}
 
 		public void OnNewClient(IClientAPI client)
 		{
-
 			client.OnParcelDwellRequest += ClientOnParcelDwellRequest;
-
+			client.OnCompleteMovementToRegion += ClientOnCompleteMovementToRegion;
+		}
+		
+		public void OnAvatarEnteringNewParcel(ScenePresence avatar, int localLandID, UUID RegionID)
+		{
+			UUID id = avatar.UUID;
+			UUID pid = avatar.currentParcelUUID;
+			string avatarName = avatar.Name.ToString();
+			
+			if (!m_NPCaddToDwell) {
+				if (!npccheck (id)) {
+					checkav(id,pid,m_AvReturnTime,localLandID,avatarName);
+					} 
+				} else {
+				checkav(id,pid,m_AvReturnTime,localLandID,avatarName);
+				}
 		}
 
+		public void  ClientOnCompleteMovementToRegion(IClientAPI client, bool theBoolean)
+		{
+			ScenePresence avatar = m_scene.GetScenePresence(client.AgentId);
+			if (!avatar.IsChildAgent)
+			{
+				//m_log.DebugFormat("[DWELL]: region {0} avatar {1}", m_scene.RegionInfo.RegionName, avatar.Name);
+				UUID id = client.AgentId;
+				string avatarName = avatar.Name.ToString();
+				
+				ILandObject parcel = m_scene.LandChannel.GetLandObject(avatar.AbsolutePosition);
+				UUID pid = parcel.LandData.GlobalID;
+				int localLandID = parcel.LandData.LocalID;
+
+				if (!m_NPCaddToDwell) {
+					if (!npccheck (id)) {
+						checkav(id,pid,m_AvReturnTime,localLandID,avatarName);
+					} 
+				} else {
+					checkav(id,pid,m_AvReturnTime,localLandID,avatarName);
+				}				
+			}
+		}
+		
 		private Hashtable GenericXMLRPCRequest(Hashtable ReqParams, string method, string server)
 		{
 			ArrayList SendParams = new ArrayList();
@@ -189,36 +310,71 @@ namespace Barosonix.Dwell.Module
 
 		private void ClientOnParcelDwellRequest(int localID, IClientAPI client)
 		{
+			//m_log.Debug("[DWELL]: ClientOnParcelDwellRequest");
+			
 			ILandObject parcel = m_scene.LandChannel.GetLandObject(localID);
 			if (parcel == null)
 				return;
 
-			UUID id = (UUID)parcel.LandData.GlobalID.ToString();
-			dwell = GetDwell(id);
-			client.SendParcelDwellReply (localID, parcel.LandData.GlobalID, dwell);
+			client.SendParcelDwellReply(localID, parcel.LandData.GlobalID, parcel.LandData.Dwell);	
 		}
 
-		private void checkav(UUID av,UUID parcelID,int time)
+		private void checkav(UUID av,UUID parcelID,int time, int localLandID, string avatarName)
 		{
+			//m_log.Debug("[DWELL]: Check av");
+			ILandObject parcel = m_scene.LandChannel.GetLandObject(localLandID);
 			string pid = parcelID.ToString();
 			string id = av.ToString();
 			string avrtime = time.ToString();
+			
+			Hashtable data = new Hashtable();
+			data["id"] = id;
+			data["pid"] = pid;
+			data["parcel"] = parcel.LandData.Name.ToString();
+			data["avatar"] = avatarName;
+			data["localLandID"] =  localLandID.ToString();
+			data["parcel"] = parcel.LandData.Name.ToString();
+			data["parcelOwner"] = parcel.LandData.OwnerID.ToString();
+			data["parcelGroupOwned"] = "0";
+			data["parcelOwnerName"] = "";
+			if (parcel.LandData.IsGroupOwned) {
+				data["parcelGroupOwned"] = "1";
+				IGroupsModule groups = m_scene.RequestModuleInterface<IGroupsModule>();
+				if (groups != null)
+				{
+					GroupRecord gr = groups.GetGroupRecord(parcel.LandData.OwnerID);
+					if (gr != null)
+						data["parcelOwnerName"] = gr.GroupName.ToString();	
+				}
+			} else {
+				UserAccount account = m_scene.UserAccountService.GetUserAccount(UUID.Zero, parcel.LandData.OwnerID);
+				data["parcelOwnerName"] = account.Name;	
+			}
+				
 			Hashtable ReqHash = new Hashtable();
-			ReqHash["id"] = id;
-			ReqHash["pid"] = pid;
 			ReqHash["avrt"] = avrtime;
-
+			ReqHash["pch"] = m_periodToCountInHours;
+			ReqHash["cua"] = m_countUniqueAvatar.ToString();
+			ReqHash["number"] = "1";
+			ReqHash["regionuuid"] = m_scene.RegionInfo.RegionID.ToString();;
+			ReqHash["regionname"] = m_scene.RegionInfo.RegionName;
+			ReqHash["0"] = data;
+			
 			Hashtable result = GenericXMLRPCRequest(ReqHash,
 				"Checkav", m_DwellServer);
-			if (!Convert.ToBoolean(result["success"]))
+			if (Convert.ToBoolean(result["success"]))
 			{
+				ArrayList dataArray = (ArrayList)result["data"];
+				Hashtable d = (Hashtable)dataArray[0];
+				parcel.LandData.Dwell = Convert.ToInt32(d["data"].ToString());
+				m_scene.LandChannel.UpdateLandObject(localLandID, parcel.LandData);
 			}
 		}
 
 		private bool npccheck(UUID clientID)
 		{
 			ScenePresence p;
-
+			//m_log.Debug("[DWELL]: npccheck");
 			p = m_scene.GetScenePresence(clientID);
 
 			if (p != null && !p.IsChildAgent) {
@@ -237,22 +393,9 @@ namespace Barosonix.Dwell.Module
 
 		public int GetDwell(UUID parcelID)
 		{
-			string pid = parcelID.ToString();
-			Hashtable ReqHash = new Hashtable();
-			ReqHash["pid"] = pid;
-
-			Hashtable result = GenericXMLRPCRequest(ReqHash,
-				"GetDwell", m_DwellServer);
-
-			if (!Convert.ToBoolean(result["success"]))
-			{
-				return 0;
-			}
-			ArrayList dataArray = (ArrayList)result["data"];
-
-			Hashtable d = (Hashtable)dataArray[0];
-			int rs = Convert.ToInt32(d["dwellers"].ToString());
-			return rs;
+			m_log.Debug("[DWELL]: GetDwell");
+			// here just return 0, does not seem to be used
+			return 0;
 		}
 		             
 	}

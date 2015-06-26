@@ -3,3 +3,6 @@
     DwellURL = http://yoururlhere
     NPCaddToDwell = false
     AvReturnTime = 5
+    PeriodToCountInHours = 24
+    CountUniqueAvatar = false
+    
